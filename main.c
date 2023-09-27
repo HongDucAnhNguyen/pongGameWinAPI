@@ -5,6 +5,17 @@
 /*global variables*/
 HWND g_Window;
 BOOL g_gameIsRunning;
+GAMEBITMAP g_backBuffer;
+RECT clientRect;
+BOOL g_windowInFocus;
+PLAYER g_player;
+int clientWindowWidth;
+int clientWindowHeight;
+int playerSpeed;
+int32_t playerScreenX;
+int32_t playerScreenY;
+
+
 
 /*WPARAM = WORD PARAMETER = a 32-bit value that carries additional
 information related to the message being processed
@@ -14,19 +25,30 @@ LRESULT CALLBACK WindowProc(HWND WindowHandle, UINT uMsg, WPARAM wParam, LPARAM 
 //function to render game
 void RenderGraphics(void);
 void ProcessPlayerInput(void);
+void setClientRect(void);
+void SetDIBSection(void);
+void DrawPlayer(int32_t StartingPixel);
+BOOL GameIsAlreadyRunning(void);
+
+
 
 //entry func
 int WINAPI WinMain(HINSTANCE Instance, HINSTANCE prevInstance,
 	PSTR cmdLine, int cmdShow)
 
 {
+	playerSpeed = 1;
 	//create window class
 	WNDCLASS WindowClass = { 0 };
 	WindowClass.lpfnWndProc = WindowProc;
 	WindowClass.hInstance = Instance;
 	WindowClass.style = 0;
 	WindowClass.lpszClassName = L"Window Class";
+	if (GameIsAlreadyRunning() == TRUE) {
 
+		MessageBox(NULL, L"Another instance of Game is already running", L"Game is already running", MB_OK);
+		return 0;
+	}
 	//register window class, return 0 when failed
 	//fail catch
 	if (RegisterClass(&WindowClass) == 0) {
@@ -58,9 +80,22 @@ int WINAPI WinMain(HINSTANCE Instance, HINSTANCE prevInstance,
 		}
 		ShowWindow(g_Window, SW_SHOWNORMAL);
 		g_gameIsRunning = TRUE;
+		setClientRect();
+		SetDIBSection();
+
 
 
 	}
+	g_player.WorldPositionX = 25;
+	g_player.WorldPositionY = 25;
+
+	//check if allocation failed
+	if (g_backBuffer.Memory == NULL) {
+		MessageBox(NULL, L"Error allocating memory", L"Memory Allocation Error", MB_OK | MB_ICONERROR);
+
+		return 0;
+	}
+
 
 
 
@@ -70,8 +105,8 @@ int WINAPI WinMain(HINSTANCE Instance, HINSTANCE prevInstance,
 	while (g_gameIsRunning && PeekMessage(&Message, g_Window, 0, 0, PM_REMOVE) > 0) {
 		DispatchMessageA(&Message);
 		ProcessPlayerInput();
-
-
+		RenderGraphics();
+		Sleep(playerSpeed);
 	}
 
 
@@ -81,6 +116,23 @@ int WINAPI WinMain(HINSTANCE Instance, HINSTANCE prevInstance,
 
 
 
+BOOL GameIsAlreadyRunning(void) {
+	/*A mutex (short for "mutual exclusion") is a synchronization
+	primitive used in computer programming to prevent multiple threads
+	or processes from accessing shared resources simultaneously.
+	The primary purpose of a mutex is to ensure that only one thread or
+	process can access a critical section of code or a shared resource
+	at any given time. This prevents race conditions and maintains data integrity.*/
+
+	//A handle datatype is a vague value that serves as a reference to any obj
+	//that is managed by the Windows operating system
+	HANDLE Mutex = NULL;
+	Mutex = CreateMutex(NULL, NULL, L"GameMutex");
+	if (GetLastError() == ERROR_ALREADY_EXISTS) {
+		return TRUE;
+	}
+	else return FALSE;
+}
 
 
 
@@ -91,7 +143,8 @@ LRESULT CALLBACK WindowProc(HWND WindowHandle, UINT uMsg, WPARAM wParam, LPARAM 
 	switch (uMsg) {
 
 	case WM_SIZE: {
-
+		setClientRect();
+		SetDIBSection();
 		break;
 	}
 	case WM_DESTROY: {
@@ -128,6 +181,33 @@ LRESULT CALLBACK WindowProc(HWND WindowHandle, UINT uMsg, WPARAM wParam, LPARAM 
 	return Result;
 }
 
+void setClientRect(void) {
+	//retrieve initial window dimensions
+	GetClientRect(g_Window, &clientRect);
+	clientWindowWidth = clientRect.right - clientRect.left;
+	clientWindowHeight = clientRect.bottom - clientRect.top;
+}
+
+void SetDIBSection(void) {
+	if (g_backBuffer.Memory) {
+		VirtualFree(g_backBuffer.Memory, 0, MEM_RELEASE);
+	}
+	//biSize specifies the size in bytes needed for the BMIHEADERINFO struct
+	g_backBuffer.BitmapInfo.bmiHeader.biSize = sizeof(g_backBuffer.BitmapInfo.bmiHeader);
+	g_backBuffer.BitmapInfo.bmiHeader.biWidth = BITMAP_WIDTH;
+	g_backBuffer.BitmapInfo.bmiHeader.biHeight = BITMAP_HEIGHT;
+	g_backBuffer.BitmapInfo.bmiHeader.biBitCount = GAME_BITSPERPIXEL;
+
+	g_backBuffer.BitmapInfo.bmiHeader.biCompression = BI_RGB;
+	g_backBuffer.BitmapInfo.bmiHeader.biPlanes = 1;
+
+	//allocate memory and store the pointer of the bitmap or canvas
+	g_backBuffer.Memory =
+		VirtualAlloc(NULL, GAME_DRAWING_AREA_MEMORY_SIZE, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
+}
+
+
+
 void RenderGraphics(void) {
 
 	//drawing backbuffer to window
@@ -135,10 +215,95 @@ void RenderGraphics(void) {
 	//get a handle to a device context that is compatible with the game window
 	HDC DeviceContext = GetDC(g_Window);
 
+	//create and configure window pixel
+	PIXEL32 WindowPixel = { 0 };
+	WindowPixel.Blue = 0;
+	WindowPixel.Green = 0;
+	WindowPixel.Red = 0;
+	WindowPixel.Alpha = 0;
+
+	//fill up bitmap region with configuration of Pixel structure, bit by bit
+	for (int i = 0; i < BITMAP_WIDTH * BITMAP_HEIGHT; i++) {
+		/*memcpy or memcpy_s are both functions to copy bytes from buffer to buffer
+		however, memcpy_s is more secure because it needs the programmer to specify the size of the
+		destination buffer explicitly
+
+		errno_t memcpy_s(void *dest, rsize_t destsz, const void *src, rsize_t count);
+
+		dest: A pointer to the destination memory location where the data will be copied.
+
+		destsz: The size of the destination buffer, in bytes.
+
+		src: A pointer to the source memory location from which the data will be copied.
+
+		count: The number of bytes to copy from the source to the destination.
+
+
+		*/
+		memcpy_s((PIXEL32*)g_backBuffer.Memory + i, sizeof(PIXEL32), &WindowPixel, sizeof(PIXEL32));
+
+	}
+
+
+
+	//set screen position for player
+	playerScreenX = g_player.WorldPositionX;
+	playerScreenY = g_player.WorldPositionY;
+
+	int32_t playerStartingScreenPixel = ((BITMAP_HEIGHT * BITMAP_WIDTH) - BITMAP_WIDTH - BITMAP_WIDTH *
+		playerScreenY) + playerScreenX;
+
+
+
+
+	DrawPlayer(playerStartingScreenPixel);
+
+
+
+
+
+	StretchDIBits(DeviceContext, 0, 0, clientWindowWidth, clientWindowHeight, 0, 0, BITMAP_WIDTH, BITMAP_HEIGHT,
+		g_backBuffer.Memory, &g_backBuffer.BitmapInfo, DIB_RGB_COLORS, SRCCOPY
+	);
+	ReleaseDC(g_Window, DeviceContext);
 
 }
 
 
+
+
+void DrawPlayer(int32_t StartingScreenPixel) {
+	for (int32_t y = 0; y < 16; y++) {
+		for (int32_t x = 0; x < 6; x++) {
+			memset((PIXEL32*)g_backBuffer.Memory + StartingScreenPixel + x - (BITMAP_WIDTH * y), 0xFF, sizeof(PIXEL32));
+
+
+		}
+	}
+}
+
+
 void ProcessPlayerInput(void) {
+	short EscapeKeyIsDown = GetAsyncKeyState(VK_ESCAPE);
+	short UpKeyIsDown = GetAsyncKeyState(VK_UP) | GetAsyncKeyState('W');
+	short DownKeyIsDown = GetAsyncKeyState(VK_DOWN) | GetAsyncKeyState('S');
+
+
+	if (EscapeKeyIsDown) {
+		SendMessage(g_Window, WM_CLOSE, 0, 0);
+	}
+	if (UpKeyIsDown) {
+		if (g_player.WorldPositionY > 0) {
+			g_player.WorldPositionY--;
+		}
+
+	}
+	if (DownKeyIsDown) {
+		if (g_player.WorldPositionY < BITMAP_HEIGHT - 16) {
+			g_player.WorldPositionY++;
+		}
+
+
+	}
 
 }

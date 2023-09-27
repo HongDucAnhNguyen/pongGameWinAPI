@@ -1,2 +1,4 @@
 ﻿  main.c
-  pong game with winapi.vcxproj -> C:\Development\pong game with winapi\x64\Debug\pong game with winapi.exe
+C:\Development\gameDev\pong game with winapi\pong game with winapi\main.c(130,32): warning C4047: 'function': 'BOOL' differs in levels of indirection from 'void *'
+C:\Development\gameDev\pong game with winapi\pong game with winapi\main.c(130,28): warning C4024: 'CreateMutexW': different types for formal and actual parameter 2
+  pong game with winapi.vcxproj -> C:\Development\gameDev\pong game with winapi\x64\Debug\pong game with winapi.exe
