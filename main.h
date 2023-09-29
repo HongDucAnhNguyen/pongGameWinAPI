@@ -28,6 +28,10 @@ typedef struct PLAYER {
 	int32_t WorldPositionX;
 	int32_t WorldPositionY;
 	int32_t HP;
+	int32_t characterWidth;
+	int32_t characterHeight;
 	int32_t strength;
 	int32_t magicPoints;
 }PLAYER;
+
+

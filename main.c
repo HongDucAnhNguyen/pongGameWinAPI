@@ -9,13 +9,24 @@ GAMEBITMAP g_backBuffer;
 RECT clientRect;
 BOOL g_windowInFocus;
 PLAYER g_player;
+PLAYER g_opponent;
+PLAYER g_pongBall;
 int clientWindowWidth;
 int clientWindowHeight;
 int playerSpeed;
 int32_t playerScreenX;
 int32_t playerScreenY;
-
-
+int32_t opponentScreenY;
+int32_t opponentScreenX;
+int32_t pongBallScreenX;
+int32_t pongBallScreenY;
+BOOL g_windowHasFocus;
+BOOL oppMovesUp = TRUE;
+BOOL oppMovesDown = FALSE;
+BOOL pongBallMovesLeft = TRUE;
+BOOL pongBallMovesRight = FALSE;
+int playerScore;
+int oppScore;
 
 /*WPARAM = WORD PARAMETER = a 32-bit value that carries additional
 information related to the message being processed
@@ -27,9 +38,11 @@ void RenderGraphics(void);
 void ProcessPlayerInput(void);
 void setClientRect(void);
 void SetDIBSection(void);
-void DrawPlayer(int32_t StartingPixel);
+void DrawPlayer(int32_t StartingPixel, int32_t characterWidth, int32_t characterHeight);
 BOOL GameIsAlreadyRunning(void);
-
+void OpponentMoves(void);
+void pongBallMoves(void);
+void checkCollision(void);
 
 
 //entry func
@@ -88,6 +101,21 @@ int WINAPI WinMain(HINSTANCE Instance, HINSTANCE prevInstance,
 	}
 	g_player.WorldPositionX = 25;
 	g_player.WorldPositionY = 25;
+	g_player.characterHeight = 16;
+	g_player.characterWidth = 5;
+
+
+
+	g_opponent.WorldPositionX = BITMAP_WIDTH - 25;
+	g_opponent.WorldPositionY = 25;
+	g_opponent.characterHeight = 16;
+	g_opponent.characterWidth = 5;
+
+	g_pongBall.WorldPositionX = BITMAP_WIDTH / 2;
+	g_pongBall.WorldPositionY = 35;
+	g_pongBall.characterHeight = 5;
+	g_pongBall.characterWidth = 5;
+
 
 	//check if allocation failed
 	if (g_backBuffer.Memory == NULL) {
@@ -250,21 +278,51 @@ void RenderGraphics(void) {
 	playerScreenX = g_player.WorldPositionX;
 	playerScreenY = g_player.WorldPositionY;
 
+	opponentScreenY = g_opponent.WorldPositionY;
+	opponentScreenX = g_opponent.WorldPositionX;
+
+	pongBallScreenX = g_pongBall.WorldPositionX;
+	pongBallScreenY = g_pongBall.WorldPositionY;
+	/*Explanation for the expression to determine the starting pixel:
+
+	in winapi, if bitmap_height is a positive value, the bitmap is drawn bottom left to right all the way up
+	bitmapheight x bitmapwidth = area of bitmap rectangle
+
+	- bitmapwidth => jump one row from top of window
+
+	- bitmapwidth x screenY => remove more rows, according to the starting Y position, in this case, jump 25 more rows from top
+
+	+ screenX => move player horizontally to position X on the window
+
+	==> coordinate is now 25,25 if we count it as starting from the top of the window
+	*/
+
 	int32_t playerStartingScreenPixel = ((BITMAP_HEIGHT * BITMAP_WIDTH) - BITMAP_WIDTH - BITMAP_WIDTH *
 		playerScreenY) + playerScreenX;
 
+	int32_t oppStartingScreenPixel = ((BITMAP_HEIGHT * BITMAP_WIDTH) - BITMAP_WIDTH - BITMAP_WIDTH *
+		opponentScreenY + opponentScreenX);
+
+	int32_t pongBallStartingScreenPixel = ((BITMAP_HEIGHT * BITMAP_WIDTH) - BITMAP_WIDTH - BITMAP_WIDTH * pongBallScreenY) + pongBallScreenX;
 
 
+	//draw player
+	DrawPlayer(playerStartingScreenPixel, g_player.characterWidth, g_player.characterHeight);
 
-	DrawPlayer(playerStartingScreenPixel);
+	//draw opponent
+	DrawPlayer(oppStartingScreenPixel, g_opponent.characterWidth, g_opponent.characterHeight);
 
-
+	DrawPlayer(pongBallStartingScreenPixel, g_pongBall.characterWidth, g_pongBall.characterHeight);
 
 
 
 	StretchDIBits(DeviceContext, 0, 0, clientWindowWidth, clientWindowHeight, 0, 0, BITMAP_WIDTH, BITMAP_HEIGHT,
 		g_backBuffer.Memory, &g_backBuffer.BitmapInfo, DIB_RGB_COLORS, SRCCOPY
 	);
+
+	char ScoreTextBuffer[64] = { 0 };
+	sprintf_s(ScoreTextBuffer, _countof(ScoreTextBuffer), "Score: %d - %d", playerScore, oppScore);
+	TextOutA(DeviceContext, 0, 25, ScoreTextBuffer, (int)strlen(ScoreTextBuffer));
 	ReleaseDC(g_Window, DeviceContext);
 
 }
@@ -272,9 +330,12 @@ void RenderGraphics(void) {
 
 
 
-void DrawPlayer(int32_t StartingScreenPixel) {
-	for (int32_t y = 0; y < 16; y++) {
-		for (int32_t x = 0; x < 6; x++) {
+
+
+
+void DrawPlayer(int32_t StartingScreenPixel, int32_t characterWidth, int32_t characterHeight) {
+	for (int32_t y = 0; y < characterHeight; y++) {
+		for (int32_t x = 0; x < characterWidth; x++) {
 			memset((PIXEL32*)g_backBuffer.Memory + StartingScreenPixel + x - (BITMAP_WIDTH * y), 0xFF, sizeof(PIXEL32));
 
 
@@ -282,13 +343,150 @@ void DrawPlayer(int32_t StartingScreenPixel) {
 	}
 }
 
+void OpponentMoves(void) {
+
+
+
+
+	if (oppMovesUp) {
+		if (g_opponent.WorldPositionY > 5) {
+
+			g_opponent.WorldPositionY--;
+
+
+
+		}
+		else {
+			oppMovesDown = TRUE;
+			oppMovesUp = FALSE;
+		}
+
+	}
+
+	if (oppMovesDown) {
+		if (g_opponent.WorldPositionY < BITMAP_HEIGHT - 16) {
+
+			g_opponent.WorldPositionY++;
+
+
+
+		}
+		else {
+			oppMovesUp = TRUE;
+			oppMovesDown = FALSE;
+		}
+	}
+
+
+
+
+
+}
+
+void pongBallMoves(void) {
+
+	checkCollision();
+
+	if (pongBallMovesRight) {
+
+
+
+
+		if (g_pongBall.WorldPositionX + 5 < BITMAP_WIDTH) {
+			g_pongBall.WorldPositionX++;
+		}
+
+		else {
+			playerScore++;
+			pongBallMovesLeft = TRUE;
+			pongBallMovesRight = FALSE;
+
+		}
+
+	}
+
+
+
+
+
+
+	if (pongBallMovesLeft) {
+
+
+
+
+		if (g_pongBall.WorldPositionX > 0) {
+
+			g_pongBall.WorldPositionX--;
+		}
+		else {
+			oppScore++;
+			pongBallMovesRight = TRUE;
+			pongBallMovesLeft = FALSE;
+
+
+		}
+
+	}
+
+
+
+
+
+}
+
+void checkCollision(void) {
+	/*check collision
+
+	NOTE: turn into independent func
+	*/
+
+	//pong Ball in range
+	if (g_pongBall.WorldPositionY >= g_opponent.WorldPositionY - 5 && g_pongBall.WorldPositionY <=
+		g_opponent.WorldPositionY + 16
+		)
+	{
+		//front collision
+
+		if (g_pongBall.WorldPositionX + 5 == g_opponent.WorldPositionX) {
+			pongBallMovesLeft = TRUE;
+			pongBallMovesRight = FALSE;
+		}
+		//back collision
+		else if (g_pongBall.WorldPositionX == g_opponent.WorldPositionX + 5) {
+
+			pongBallMovesRight = TRUE;
+			pongBallMovesLeft = FALSE;
+		}
+
+	}
+
+	if (
+		(g_pongBall.WorldPositionY >= g_player.WorldPositionY - 5 && g_pongBall.WorldPositionY <=
+			g_player.WorldPositionY + 16)) {
+		if (g_pongBall.WorldPositionX + 5 == g_player.WorldPositionX) {
+			pongBallMovesLeft = TRUE;
+			pongBallMovesRight = FALSE;
+		}
+		else if (g_pongBall.WorldPositionX == g_player.WorldPositionX + 5) {
+
+			pongBallMovesRight = TRUE;
+			pongBallMovesLeft = FALSE;
+		}
+
+
+	}
+}
+
 
 void ProcessPlayerInput(void) {
+
 	short EscapeKeyIsDown = GetAsyncKeyState(VK_ESCAPE);
 	short UpKeyIsDown = GetAsyncKeyState(VK_UP) | GetAsyncKeyState('W');
 	short DownKeyIsDown = GetAsyncKeyState(VK_DOWN) | GetAsyncKeyState('S');
 
-
+	pongBallMoves();
+	OpponentMoves();
 	if (EscapeKeyIsDown) {
 		SendMessage(g_Window, WM_CLOSE, 0, 0);
 	}
