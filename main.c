@@ -25,11 +25,8 @@ BOOL oppMovesUp = TRUE;
 BOOL oppMovesDown = FALSE;
 BOOL pongBallMovesLeft = TRUE;
 BOOL pongBallMovesRight = FALSE;
-BOOL pongBallMovesToTopEdge = TRUE;
-BOOL pongBallMovesToRightEdge = FALSE;
-BOOL pongBallMovesToLeftEdge = FALSE;
-BOOL pongBallMovesToBottomEdge = FALSE;
-BOOL pongBallComingFromBottom = FALSE;
+BOOL pongBallMovesUp = TRUE;
+BOOL pongBallMovesDown = FALSE;
 
 int playerScore;
 int oppScore;
@@ -57,7 +54,7 @@ int WINAPI WinMain(HINSTANCE Instance, HINSTANCE prevInstance,
 	PSTR cmdLine, int cmdShow)
 
 {
-	playerSpeed = 1;
+
 	//create window class
 	WNDCLASS WindowClass = { 0 };
 	WindowClass.lpfnWndProc = WindowProc;
@@ -85,7 +82,7 @@ int WINAPI WinMain(HINSTANCE Instance, HINSTANCE prevInstance,
 			WS_OVERLAPPEDWINDOW | WS_VISIBLE,            // Window style
 
 			// Size and position
-			CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT,
+			CW_USEDEFAULT, CW_USEDEFAULT, 600, 500,
 
 			NULL,       // Parent window    
 			NULL,       // Menu
@@ -141,7 +138,7 @@ int WINAPI WinMain(HINSTANCE Instance, HINSTANCE prevInstance,
 		DispatchMessageA(&Message);
 		ProcessPlayerInput();
 		RenderGraphics();
-		Sleep(playerSpeed);
+		Sleep(1);
 	}
 
 
@@ -328,7 +325,7 @@ void RenderGraphics(void) {
 
 	char ScoreTextBuffer[64] = { 0 };
 	sprintf_s(ScoreTextBuffer, _countof(ScoreTextBuffer), "Score: %d - %d", playerScore, oppScore);
-	TextOutA(DeviceContext, 0, 25, ScoreTextBuffer, (int)strlen(ScoreTextBuffer));
+	TextOutA(DeviceContext, BITMAP_WIDTH / 2.0, 25, ScoreTextBuffer, (int)strlen(ScoreTextBuffer));
 	ReleaseDC(g_Window, DeviceContext);
 
 }
@@ -401,155 +398,95 @@ void pongBallMoves(void) {
 void checkEdgeCollision(void) {
 
 
+	if (pongBallMovesLeft && pongBallMovesUp) {
 
-
-
-	if (pongBallMovesToTopEdge && pongBallMovesLeft) {
-		if (g_pongBall.WorldPositionX > 0) {
-
-			g_pongBall.WorldPositionX--;
-			g_pongBall.WorldPositionY--;
-		}
-		if (g_pongBall.WorldPositionX > 0 && g_pongBall.WorldPositionY == 0) {
-
-			pongBallMovesToLeftEdge = TRUE;
-			pongBallMovesToTopEdge = FALSE;
-
-		}
-	}
-
-
-
-	if (pongBallMovesToLeftEdge && pongBallMovesLeft) {
-
-
-		if (pongBallComingFromBottom) {
-			g_pongBall.WorldPositionX--;
-			g_pongBall.WorldPositionY--;
+		if (g_pongBall.WorldPositionY == 0) {
+			pongBallMovesDown = TRUE;
+			pongBallMovesUp = FALSE;
 		}
 
-		if (g_pongBall.WorldPositionX > 0 && g_pongBall.WorldPositionY >= 0 && pongBallComingFromBottom == FALSE) {
-			g_pongBall.WorldPositionX--;
-			g_pongBall.WorldPositionY++;
-		}
-
-
-
-
-		if (g_pongBall.WorldPositionX == 0 && g_pongBall.WorldPositionY < BITMAP_HEIGHT - g_pongBall.characterHeight && pongBallComingFromBottom
-			== FALSE) {
+		if (g_pongBall.WorldPositionX == 0) {
 			oppScore++;
-			pongBallMovesRight = TRUE;
-			pongBallMovesToBottomEdge = TRUE;
-			pongBallMovesLeft = FALSE;
-		}
-		if (g_pongBall.WorldPositionX == 0 && pongBallComingFromBottom) {
-			oppScore++;
-			pongBallMovesToTopEdge = TRUE;
-			pongBallMovesRight = TRUE;
-			pongBallMovesLeft = FALSE;
-		}
-		if (g_pongBall.WorldPositionX == 0 && g_pongBall.WorldPositionY == BITMAP_HEIGHT - g_pongBall.characterHeight) {
-			oppScore++;
-			pongBallMovesToTopEdge = TRUE;
+			g_pongBall.WorldPositionX = BITMAP_WIDTH / 2;
+			g_pongBall.WorldPositionY = 35;
 			pongBallMovesRight = TRUE;
 			pongBallMovesLeft = FALSE;
 		}
 
+		g_pongBall.WorldPositionX--;
+		g_pongBall.WorldPositionY--;
+
+
 	}
+	if (pongBallMovesLeft && pongBallMovesDown) {
 
-
-	if (pongBallMovesToBottomEdge && pongBallMovesLeft) {
-		if (g_pongBall.WorldPositionX == BITMAP_WIDTH - g_pongBall.characterWidth && g_pongBall.WorldPositionY < BITMAP_HEIGHT - g_pongBall.characterHeight) {
-			g_pongBall.WorldPositionX--;
-			g_pongBall.WorldPositionY++;
-		}
-		if (g_pongBall.WorldPositionX > 0 && g_pongBall.WorldPositionY == BITMAP_HEIGHT - g_pongBall.characterHeight) {
-
-
-			pongBallComingFromBottom = TRUE;
-			pongBallMovesToLeftEdge = TRUE;
-			pongBallMovesToBottomEdge = FALSE;
-
-		}
-	}
-
-
-
-
-
-
-
-
-
-
-
-
-
-	if (pongBallMovesToTopEdge && pongBallMovesRight) {
-
-		if (g_pongBall.WorldPositionX >= 0 && g_pongBall.WorldPositionY == 0) {
-
-			pongBallMovesToRightEdge = TRUE;
-			pongBallMovesToTopEdge = FALSE;
-
+		if (g_pongBall.WorldPositionX > 0 && g_pongBall.WorldPositionY == BITMAP_HEIGHT - (g_pongBall.characterHeight + 2)) {
+			pongBallMovesUp = TRUE;
+			pongBallMovesDown = FALSE;
 		}
 
-		if (g_pongBall.WorldPositionX >= 0 && g_pongBall.WorldPositionY > 0) {
-
-			g_pongBall.WorldPositionX++;
-			g_pongBall.WorldPositionY--;
+		if (g_pongBall.WorldPositionX == 0) {
+			oppScore++;
+			g_pongBall.WorldPositionX = BITMAP_WIDTH / 2;
+			g_pongBall.WorldPositionY = 35;
+			pongBallMovesUp = TRUE;
+			pongBallMovesRight = TRUE;
+			pongBallMovesLeft = FALSE;
+			pongBallMovesDown = FALSE;
 		}
+
+		g_pongBall.WorldPositionX--;
+		g_pongBall.WorldPositionY++;
+
 
 	}
 
-	if (pongBallMovesToBottomEdge && pongBallMovesRight) {
-		if (g_pongBall.WorldPositionY < BITMAP_HEIGHT - g_pongBall.characterHeight) {
-			g_pongBall.WorldPositionX++;
-			g_pongBall.WorldPositionY++;
+	if (pongBallMovesRight && pongBallMovesUp) {
+
+		if (g_pongBall.WorldPositionY == 0) {
+			pongBallMovesDown = TRUE;
+			pongBallMovesUp = FALSE;
 		}
-		if (g_pongBall.WorldPositionX >= 0 && g_pongBall.WorldPositionY == BITMAP_HEIGHT - g_pongBall.characterHeight) {
-			pongBallMovesToTopEdge = TRUE;
-			pongBallMovesToBottomEdge = FALSE;
-			pongBallMovesToRightEdge = FALSE;
-
-
-		}
-	}
-
-
-	if (pongBallMovesToRightEdge && pongBallMovesRight) {
-
-		if (g_pongBall.WorldPositionX < BITMAP_WIDTH - g_pongBall.characterWidth && g_pongBall.WorldPositionY >= 0) {
-
-			g_pongBall.WorldPositionX++;
-			g_pongBall.WorldPositionY++;
-		}
-
-
-		if (g_pongBall.WorldPositionX == BITMAP_WIDTH - g_pongBall.characterWidth && g_pongBall.WorldPositionY < BITMAP_HEIGHT - g_pongBall.characterHeight) {
+		if (g_pongBall.WorldPositionX == BITMAP_WIDTH - g_pongBall.characterWidth) {
 			playerScore++;
+			g_pongBall.WorldPositionX = BITMAP_WIDTH / 2;
+			g_pongBall.WorldPositionY = 35;
+
 			pongBallMovesLeft = TRUE;
-			pongBallMovesToBottomEdge = TRUE;
-
 			pongBallMovesRight = FALSE;
-			pongBallMovesToRightEdge = FALSE;
-
-
-
 		}
-		if (g_pongBall.WorldPositionX == BITMAP_WIDTH - g_pongBall.characterWidth && g_pongBall.WorldPositionY == BITMAP_HEIGHT - g_pongBall.characterHeight) {
-			playerScore++;
-			pongBallMovesLeft = TRUE;
-			pongBallMovesToTopEdge = TRUE;
 
-			pongBallMovesRight = FALSE;
-			pongBallMovesToRightEdge = FALSE;
+		g_pongBall.WorldPositionX++;
+		g_pongBall.WorldPositionY--;
 
-
-
-		}
 	}
+	if (pongBallMovesRight && pongBallMovesDown) {
+
+		if (g_pongBall.WorldPositionX == BITMAP_WIDTH - g_pongBall.characterWidth) {
+
+			playerScore++;
+			g_pongBall.WorldPositionX = BITMAP_WIDTH / 2;
+			g_pongBall.WorldPositionY = 35;
+			pongBallMovesLeft = TRUE;
+			pongBallMovesUp = TRUE;
+			pongBallMovesDown = FALSE;
+			pongBallMovesRight = FALSE;
+		}
+		if (g_pongBall.WorldPositionX < BITMAP_WIDTH - g_pongBall.characterWidth && g_pongBall.WorldPositionY
+			== BITMAP_HEIGHT - (g_pongBall.characterHeight + 2)) {
+			pongBallMovesUp = TRUE;
+			pongBallMovesDown = FALSE;
+		}
+
+
+		g_pongBall.WorldPositionX++;
+		g_pongBall.WorldPositionY++;
+
+
+
+
+	}
+
 
 
 
@@ -578,16 +515,13 @@ void checkPlayerCollision(void) {
 
 			if (g_pongBall.WorldPositionX + 5 == g_opponent.WorldPositionX) {
 				pongBallMovesLeft = TRUE;
-				pongBallMovesToBottomEdge = TRUE;
-				pongBallMovesRight = FALSE;
-			}
-			//back collision
-			else if (g_pongBall.WorldPositionX == g_opponent.WorldPositionX + 5) {
+				pongBallMovesDown = !pongBallMovesDown;
+				pongBallMovesUp = !pongBallMovesUp;
 
-				pongBallMovesRight = TRUE;
-				pongBallMovesToRightEdge = TRUE;
-				pongBallMovesLeft = FALSE;
+				pongBallMovesRight = FALSE;
+
 			}
+
 
 		}
 	}
@@ -598,16 +532,12 @@ void checkPlayerCollision(void) {
 			(g_pongBall.WorldPositionY >= g_player.WorldPositionY - 5 && g_pongBall.WorldPositionY <=
 				g_player.WorldPositionY + 16)) {
 
-			if (g_pongBall.WorldPositionX + 5 == g_player.WorldPositionX) {
-				pongBallMovesLeft = TRUE;
-				pongBallMovesToLeftEdge = TRUE;
-				pongBallMovesRight = FALSE;
-			}
-			else if (g_pongBall.WorldPositionX == g_player.WorldPositionX + 5) {
+			//front collision
+			if (g_pongBall.WorldPositionX == g_player.WorldPositionX + 5) {
 
 				pongBallMovesRight = TRUE;
-				pongBallMovesToBottomEdge = TRUE;
-
+				pongBallMovesDown = TRUE;
+				pongBallMovesUp = FALSE;
 				pongBallMovesLeft = FALSE;
 			}
 

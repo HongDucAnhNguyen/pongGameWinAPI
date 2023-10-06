@@ -1,4 +1,6 @@
 ﻿  main.c
-C:\Development\gameDev\pong game with winapi\pong game with winapi\main.c(165,32): warning C4047: 'function': 'BOOL' differs in levels of indirection from 'void *'
-C:\Development\gameDev\pong game with winapi\pong game with winapi\main.c(165,28): warning C4024: 'CreateMutexW': different types for formal and actual parameter 2
+C:\Development\gameDev\pong game with winapi\pong game with winapi\main.c(57,16): warning C4244: '=': conversion from 'double' to 'int', possible loss of data
+C:\Development\gameDev\pong game with winapi\pong game with winapi\main.c(162,32): warning C4047: 'function': 'BOOL' differs in levels of indirection from 'void *'
+C:\Development\gameDev\pong game with winapi\pong game with winapi\main.c(162,28): warning C4024: 'CreateMutexW': different types for formal and actual parameter 2
+C:\Development\gameDev\pong game with winapi\pong game with winapi\main.c(328,39): warning C4244: 'function': conversion from 'double' to 'int', possible loss of data
   pong game with winapi.vcxproj -> C:\Development\gameDev\pong game with winapi\x64\Debug\pong game with winapi.exe
