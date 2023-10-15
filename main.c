@@ -27,6 +27,9 @@ BOOL pongBallMovesLeft = TRUE;
 BOOL pongBallMovesRight = FALSE;
 BOOL pongBallMovesUp = TRUE;
 BOOL pongBallMovesDown = FALSE;
+FILETIME  timeStarted;
+LONGLONG timeStartedMS;
+
 
 int playerScore;
 int oppScore;
@@ -129,6 +132,7 @@ int WINAPI WinMain(HINSTANCE Instance, HINSTANCE prevInstance,
 	}
 
 
+	double lastFrameTime = 0.0;
 
 
 	/*Message loop to keep window running*/
@@ -348,8 +352,15 @@ void DrawPlayer(int32_t StartingScreenPixel, int32_t characterWidth, int32_t cha
 
 void OpponentMoves(void) {
 
+	if (g_pongBall.WorldPositionY < g_opponent.WorldPositionY) {
+		oppMovesUp = TRUE;
+		oppMovesDown = FALSE;
+	}
+	if (g_pongBall.WorldPositionY > g_opponent.WorldPositionY) {
+		oppMovesDown = TRUE;
+		oppMovesUp = FALSE;
 
-
+	}
 
 	if (oppMovesUp) {
 		if (g_opponent.WorldPositionY > 0) {
@@ -359,10 +370,7 @@ void OpponentMoves(void) {
 
 
 		}
-		else {
-			oppMovesDown = TRUE;
-			oppMovesUp = FALSE;
-		}
+		
 
 	}
 
@@ -374,10 +382,7 @@ void OpponentMoves(void) {
 
 
 		}
-		else {
-			oppMovesUp = TRUE;
-			oppMovesDown = FALSE;
-		}
+		
 	}
 
 
