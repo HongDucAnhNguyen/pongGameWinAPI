@@ -7,7 +7,6 @@ HWND g_Window;
 BOOL g_gameIsRunning;
 GAMEBITMAP g_backBuffer;
 RECT clientRect;
-BOOL g_windowInFocus;
 PLAYER g_player;
 PLAYER g_opponent;
 PLAYER g_pongBall;
@@ -57,7 +56,7 @@ int WINAPI WinMain(HINSTANCE Instance, HINSTANCE prevInstance,
 	PSTR cmdLine, int cmdShow)
 
 {
-
+	g_windowHasFocus = TRUE;
 	//create window class
 	WNDCLASS WindowClass = { 0 };
 	WindowClass.lpfnWndProc = WindowProc;
@@ -82,7 +81,7 @@ int WINAPI WinMain(HINSTANCE Instance, HINSTANCE prevInstance,
 			WS_EX_CLIENTEDGE,                              // Optional window styles.
 			WindowClass.lpszClassName,                     // Window class
 			L"Pong with Win32API",    // Window text
-			WS_OVERLAPPEDWINDOW | WS_VISIBLE,            // Window style
+			WS_OVERLAPPED | WS_MINIMIZEBOX | WS_SYSMENU,            // Window style
 
 			// Size and position
 			CW_USEDEFAULT, CW_USEDEFAULT, 600, 500,
@@ -138,8 +137,11 @@ int WINAPI WinMain(HINSTANCE Instance, HINSTANCE prevInstance,
 	/*Message loop to keep window running*/
 
 	MSG Message;
-	while (g_gameIsRunning && PeekMessage(&Message, g_Window, 0, 0, PM_REMOVE) > 0) {
-		DispatchMessageA(&Message);
+	while (g_gameIsRunning) {
+		if (PeekMessage(&Message, g_Window, 0, 0, PM_REMOVE) > 0) {
+			DispatchMessageA(&Message);
+
+		}
 		ProcessPlayerInput();
 		RenderGraphics();
 		Sleep(1);
@@ -179,8 +181,7 @@ LRESULT CALLBACK WindowProc(HWND WindowHandle, UINT uMsg, WPARAM wParam, LPARAM 
 	switch (uMsg) {
 
 	case WM_SIZE: {
-		setClientRect();
-		SetDIBSection();
+
 		break;
 	}
 	case WM_DESTROY: {
@@ -197,7 +198,15 @@ LRESULT CALLBACK WindowProc(HWND WindowHandle, UINT uMsg, WPARAM wParam, LPARAM 
 		break;
 	}
 	case WM_ACTIVATE: {
+		if (wParam == 0) {
+			//window lost focus
+			g_windowHasFocus = FALSE;
+		}
+		else {
 
+			g_windowHasFocus = TRUE;
+
+		}
 		break;
 	}
 	case WM_ACTIVATEAPP: {
@@ -355,14 +364,19 @@ void OpponentMoves(void) {
 	if (g_pongBall.WorldPositionY < g_opponent.WorldPositionY) {
 		oppMovesUp = TRUE;
 		oppMovesDown = FALSE;
+
 	}
 	if (g_pongBall.WorldPositionY > g_opponent.WorldPositionY) {
 		oppMovesDown = TRUE;
 		oppMovesUp = FALSE;
 
+
+
 	}
 
 	if (oppMovesUp) {
+
+
 		if (g_opponent.WorldPositionY > 0) {
 
 			g_opponent.WorldPositionY--;
@@ -370,7 +384,7 @@ void OpponentMoves(void) {
 
 
 		}
-		
+
 
 	}
 
@@ -382,7 +396,7 @@ void OpponentMoves(void) {
 
 
 		}
-		
+
 	}
 
 
@@ -557,9 +571,16 @@ void checkPlayerCollision(void) {
 
 void ProcessPlayerInput(void) {
 
+
 	short EscapeKeyIsDown = GetAsyncKeyState(VK_ESCAPE);
 	short UpKeyIsDown = GetAsyncKeyState(VK_UP) | GetAsyncKeyState('W');
 	short DownKeyIsDown = GetAsyncKeyState(VK_DOWN) | GetAsyncKeyState('S');
+
+
+	if (g_windowHasFocus = FALSE) {
+		return;
+	}
+
 
 	pongBallMoves();
 	OpponentMoves();
